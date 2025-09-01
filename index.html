@@ -3,596 +3,185 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>D/d Check – Sling & Shackle Visualiser</title>
-  <!-- Tailwind (CDN build) -->
+  <title>D/d Check – Sling & Shackle Visualiser (ISO aligned)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{
       --bg:#0b1220; --card:#0f172a; --card2:#0b152e; --muted:#94a3b8; --text:#e5e7eb;
       --line:#1f2a44; --accent:#67e8f9; --good:#10b981; --warn:#eab308; --bad:#ef4444;
     }
-    html,body{height:100%}
-    body{background:var(--bg); color:var(--text)}
+    body{background:var(--bg); color:var(--text); font-family:sans-serif}
     .card{border-radius:1rem; box-shadow:0 10px 20px rgba(0,0,0,.18); background:var(--card)}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
-    @media print{.no-print{display:none!important} .card{box-shadow:none;border:1px solid #999} body{background:#fff;color:#000}}
-    canvas{image-rendering: crisp-edges}
     .badge{font-size:.75rem; padding:.15rem .45rem; border-radius:.5rem}
     .good{background:var(--good); color:#052e22}
     .warn{background:var(--warn); color:#1f1a05}
-    .bad{ background:var(--bad);  color:#fff}
+    .bad{background:var(--bad); color:#fff}
     .muted{color:var(--muted)}
-    .grid-2{display:grid; grid-template-columns: 1fr 1fr; gap:1rem}
-    .grid-3{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:.75rem}
-    dialog{ width:min(980px,92vw); border:0; border-radius:16px; padding:0; }
-    dialog::backdrop{ background: rgba(0,0,0,.55); }
-    .link{color:var(--accent)}
-    .hint{display:inline-block;border-bottom:1px dotted currentColor;cursor:help}
-    .dwg text{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .dim{stroke:#8aa3c2; stroke-width:1; fill:none; stroke-dasharray:5 4}
-    .axis{stroke:#4b5563; stroke-width:1}
-    .rope{stroke:#cbd5e1; stroke-linecap:round; stroke-linejoin:round}
-    .ropeCore{stroke:#94a3b8; opacity:.55}
-    .metal{fill:#64748b}
-    .label{fill:#e5e7eb; font-size:12px}
-    .note{fill:#e5e7eb; font-size:10px}
   </style>
 </head>
 <body>
   <header class="px-4 py-4">
-    <div class="max-w-6xl mx-auto flex items-center gap-3">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.77 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="white" stroke-width="1.25"/></svg>
-      <div>
-        <h1 class="text-xl font-semibold">D/d Check – Sling & Shackle Visualiser</h1>
-        <p class="text-sm muted">Quickly assess D/d ratio, capacity reductions, and eye-length rules. Based on common guidance for 6‑strand wire‑rope basket hitches and shackle body diameters.</p>
-      </div>
-      <div class="flex-1"></div>
-      <button class="no-print text-sm px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600" onclick="help.showModal()">Help / Assumptions</button>
-    </div>
+    <h1 class="text-xl font-semibold">D/d Check – Sling & Shackle Visualiser (ISO 19901‑6)</h1>
+    <p class="text-sm muted">Includes bending efficiency factor (K<sub>be</sub>), spinning loss (k), and safety factor check.</p>
   </header>
 
-  <main class="max-w-6xl mx-auto p-4">
-    <div class="grid-2">
-      <!-- Inputs -->
-      <section class="card p-5">
-        <h2 class="font-semibold mb-3">Inputs</h2>
-        <div class="grid-3">
-          <label class="block"> <span class="text-sm">Units</span>
-            <select id="units" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" onchange="recalc()">
-              <option value="mm">mm</option>
-              <option value="in">in</option>
-            </select>
-          </label>
-
-          <label class="block"> <span class="text-sm">Sling diameter d</span>
-            <input id="d" type="number" step="any" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" value="20" oninput="recalc()"/>
-          </label>
-
-          <label class="block"> <span class="text-sm">Object / Shackle body diameter D</span>
-            <input id="D" type="number" step="any" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" value="100" oninput="recalc()"/>
-          </label>
-        </div>
-
-        <div class="grid-3 mt-3">
-          <label class="block"> <span class="text-sm">Hitch / Connection</span>
-            <select id="hitch" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" onchange="recalc()">
-              <option value="basket">Basket hitch around object (6‑strand)</option>
-              <option value="eye">Eye to shackle (straight)</option>
-              <option value="basketShackle">Basket over shackle body</option>
-            </select>
-          </label>
-
-          <label class="block"> <span class="text-sm">Sling type</span>
-            <select id="stype" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" onchange="recalc()">
-              <option value="wire6">6‑strand wire rope</option>
-              <option value="tri">GATOR‑FLEX® / TRI‑FLEX®</option>
-            </select>
-          </label>
-
-          <label class="block"> <span class="text-sm">Rated basket WLL (optional)</span>
-            <input id="wll" type="number" step="any" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" placeholder="t" oninput="recalc()"/>
-          </label>
-        </div>
-
-        <div class="grid-3 mt-3">
-          <label class="block"> <span class="text-sm">Visual style</span>
-            <select id="vizMode" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" onchange="recalc()">
-              <option value="single">Single diagram (inputs)</option>
-              <option value="sheet">Sheet: 5 cases</option>
-            </select>
-          </label>
-          <label class="block"> <span class="text-sm">Renderer</span>
-            <select id="render" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" onchange="recalc()">
-              <option value="svg">SVG (CAD linework)</option>
-              <option value="canvas">Canvas</option>
-            </select>
-          </label>
-          <label class="inline-flex items-center gap-2 mt-7">
-            <input id="showDims" type="checkbox" class="accent-sky-400" checked onchange="recalc()"/>
-            <span class="text-sm">Show dimensions</span>
-          </label>
-        </div>
-
-        <div class="grid-3 mt-3">
-          <label class="block"> <span class="text-sm">Actual eye length (optional)</span>
-            <input id="eyeL" type="number" step="any" class="w-full mt-1 px-3 py-2 rounded bg-slate-800" placeholder="same units as D" oninput="recalc()"/>
-          </label>
-          <div></div><div></div>
-        </div>
-
-        <p class="text-xs mt-3 muted">Tip: The graphic scales to your numbers. Use mm or inches consistently.</p>
-      </section>
-
-      <!-- Results -->
-      <section class="card p-5">
-        <h2 class="font-semibold mb-3">Results</h2>
-        <div class="grid md:grid-cols-2 gap-3">
-          <div class="p-3 rounded-lg bg-slate-800/60">
-            <div class="text-xs muted">D/d ratio</div>
-            <div class="text-2xl font-semibold flex items-center gap-3"><span id="dd">–</span><span id="ddBadge" class="badge">status</span></div>
-            <div id="ddNote" class="text-xs mt-1 muted"></div>
-          </div>
-          <div class="p-3 rounded-lg bg-slate-800/60">
-            <div class="text-xs muted">Capacity factor (multiplier)</div>
-            <div class="text-2xl font-semibold"><span id="cf">–</span></div>
-            <div id="cfNote" class="text-xs mt-1 muted"></div>
-          </div>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-3 mt-3">
-          <div class="p-3 rounded-lg bg-slate-800/60">
-            <div class="text-xs muted">Adjusted basket WLL</div>
-            <div class="text-xl font-semibold"><span id="adj">–</span></div>
-            <div class="text-xs mt-1 muted">If you entered a rated basket WLL, this shows WLL × capacity factor.</div>
-          </div>
-          <div class="p-3 rounded-lg bg-slate-800/60">
-            <div class="text-xs muted">Eye length rule</div>
-            <div class="text-sm"><span id="eyeRule">–</span></div>
-          </div>
-        </div>
-
-        <ul id="warnings" class="list-disc pl-5 mt-3 text-sm"></ul>
-      </section>
-    </div>
-
-    <!-- Visual -->
-    <section class="card mt-4 p-5">
-      <h2 class="font-semibold mb-3">Visualisation</h2>
-      <div class="grid-2 items-center">
-        <div>
-          <canvas id="viz" width="640" height="360" class="bg-[var(--card2)] rounded-lg hidden"></canvas>
-          <svg id="vizSVG" viewBox="0 0 640 360" class="w-full h-auto bg-[var(--card2)] rounded-lg"></svg>
-        </div>
-        <div class="space-y-2 text-sm">
-          <p><span class="hint" title="Object or shackle body diameter">D</span> is the curvature the sling wraps around. <span class="hint" title="Sling diameter">d</span> is the rope diameter.</p>
-          <p>Rules used here (basket w/ 6‑strand wire rope):</p>
-          <ul class="list-disc pl-5">
-            <li><b>D/d ≥ 25</b>: no reduction (factor 1.00).</li>
-            <li><b>5 ≤ D/d &lt; 25</b>: reduce by ~25% (factor 0.75). Wide‑body shackles recommended.</li>
-            <li><b>2 ≤ D/d &lt; 5</b>: reduce by ~40% (factor 0.60).</li>
-            <li><b>D/d &lt; 2</b>: not recommended – expect significant reduction / change method.</li>
-          </ul>
-          <p>Eye‑to‑shackle (straight): if <b>D ≥ d</b> → no reduction. If not, upsize shackle.</p>
-          <p class="text-xs muted">Note: GATOR‑FLEX® / TRI‑FLEX® slings are designed for small radii but still observe reductions above.</p>
-        </div>
+  <main class="max-w-5xl mx-auto p-4 space-y-4">
+    <section class="card p-5">
+      <h2 class="font-semibold mb-3">Inputs</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <label> Sling diameter d <input id="d" type="number" value="100" step="any" class="w-full mt-1 px-2 py-1 rounded bg-slate-800"/></label>
+        <label> Contact diameter D <input id="D" type="number" value="400" step="any" class="w-full mt-1 px-2 py-1 rounded bg-slate-800"/></label>
+        <label> Diagram case
+          <select id="case" class="w-full mt-1 px-2 py-1 rounded bg-slate-800">
+            <option value="grommetPin">Endless grommet over pin</option>
+            <option value="eyeShackle">Eye to shackle (straight)</option>
+            <option value="basketObject">Basket over round object</option>
+            <option value="basketPin">Basket over shackle body</option>
+            <option value="doubleInShackle">Double sling in shackle</option>
+          </select>
+        </label>
+        <label> Nominal safety factor γ <input id="gamma" type="number" value="5" step="any" class="w-full mt-1 px-2 py-1 rounded bg-slate-800"/></label>
+        <label> Minimum required γ<sub>min</sub> <input id="gammaMin" type="number" value="3" step="any" class="w-full mt-1 px-2 py-1 rounded bg-slate-800"/></label>
       </div>
+      <button onclick="recalc()" class="mt-3 px-3 py-2 rounded bg-sky-600 hover:bg-sky-500">Recalculate</button>
     </section>
 
-    <section class="card mt-4 p-5">
-      <h2 class="font-semibold mb-2">Quick checks</h2>
-      <div class="grid-3 text-sm">
-        <div>• Minimum eye length: <span class="mono" id="eyeMin">–</span></div>
-        <div>• Wide‑body shackle suggested when <span class="mono">2 ≤ D/d &lt; 25</span></div>
-        <div>• This tool provides guidance only – verify with manufacturer / lift plan.</div>
+    <section class="card p-5">
+      <h2 class="font-semibold mb-3">Results</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-sm muted">D/d ratio</div>
+          <div id="dd" class="text-xl font-semibold">–</div>
+        </div>
+        <div>
+          <div class="text-sm muted">Bending efficiency K<sub>be</sub></div>
+          <div id="kbe" class="text-xl font-semibold">–</div>
+        </div>
+        <div>
+          <div class="text-sm muted">Spinning loss k (if cable‑laid)</div>
+          <div id="kspin" class="text-xl font-semibold">–</div>
+        </div>
+        <div>
+          <div class="text-sm muted">Reduced safety factor γ<sub>red</sub></div>
+          <div id="gammaRed" class="text-xl font-semibold">–</div>
+        </div>
       </div>
+      <div class="mt-3 text-sm"><span id="status"></span></div>
+    </section>
+
+    <!-- Visualisation -->
+    <section class="card p-5">
+      <h2 class="font-semibold mb-3">Visualisation</h2>
+      <canvas id="viz" width="800" height="400" class="w-full h-auto bg-[var(--card2)] rounded-lg"></canvas>
+    </section>
+
+    <section class="card p-5 text-sm space-y-2">
+      <h2 class="font-semibold">Formulas used (ISO 19901‑6:2009)</h2>
+      <p>D/d = D ÷ d</p>
+      <p>K<sub>be</sub> = 1 − 0.5 / √(D/d)</p>
+      <p>γ<sub>red</sub> = γ × K<sub>be</sub> × k (k=0.9 if cable‑laid, else 1.0)</p>
+      <p>Check: γ<sub>red</sub> ≥ γ<sub>min</sub></p>
     </section>
   </main>
 
-  <!-- Help dialog -->
-  <dialog id="help">
-    <div class="card p-6">
-      <div class="flex gap-3 items-start">
-        <h3 class="text-lg font-semibold">Help & Assumptions</h3>
-        <div class="flex-1"></div>
-        <button class="px-3 py-1 rounded bg-slate-800" onclick="help.close()">Close</button>
-      </div>
-      <div class="mt-3 text-sm space-y-3">
-        <p><b>What is D/d?</b> The ratio of contact diameter <b>D</b> (hook, pin, shackle body, or the lifted object in a basket hitch) to sling diameter <b>d</b>. Small ratios create high bending strains in the rope and reduce capacity.</p>
-        <p><b>Rules encoded</b>: For 6‑strand wire‑rope <i>basket hitches</i>, capacity reduction depends on D/d: 25:1 → none; 5:1 → ≈25% reduction; 2:1 → ≈40% reduction. Below 2:1 not recommended. For <i>eye to shackle (straight)</i> connections, no derate when the shackle body diameter is at least equal to the sling diameter (D/d ≥ 1).</p>
-        <p><b>Eye length</b>: Recommended eye length ≥ <b>2× D</b> of the attachment (e.g., hook).</p>
-        <p><b>Sling types</b>: GATOR‑FLEX® / TRI‑FLEX® can tolerate small radii (minimum recommended ~5:1), but the basket‑reduction logic still applies unless your manufacturer states otherwise.</p>
-        <p class="muted">This is an engineering aid. Always follow the lift plan, applicable standards, and manufacturer data. The author accepts no liability for misuse.</p>
-      </div>
-    </div>
-  </dialog>
-
   <script>
-    const $ = id => document.getElementById(id);
-
-    function ratioToClass(r){
-      if (r >= 25) return 'good';
-      if (r >= 5)  return 'warn';
-      if (r >= 2)  return 'bad';
-      return 'bad';
-    }
-
-    function capacityFactor(hitch, stype, r){
-      // Basket around object (6-strand wire rope) – tiered factors from the reference sheet
-      if (hitch === 'basket' || hitch === 'basketShackle'){
-        if (r >= 25) return {factor:1.00, note:'No reduction for basket at ≥25:1.'};
-        if (r >= 5)  return {factor:0.75, note:'Reduce basket capacity by ~25% (5≤D/d<25). Wide‑body recommended.'};
-        if (r >= 2)  return {factor:0.60, note:'Reduce basket capacity by ~40% (2≤D/d<5). Consider larger D or different sling.'};
-        return {factor:0.40, note:'D/d<2: Not recommended. Placeholder factor ~0.40 – change method.'};
-      }
-      // Eye to shackle (straight)
-      if (hitch === 'eye'){
-        if (r >= 1) return {factor:1.00, note:'Shackle body ≥ sling diameter → no reduction.'};
-        return {factor:0.75, note:'Shackle body < sling diameter – upsize shackle. Temporary factor shown.'};
-      }
-      return {factor:1.00, note:''};
-    }
-
-    function fmt(x, dp=2){
-      if (!isFinite(x)) return '–';
-      return (+x).toFixed(dp).replace(/\.00$/, '.00');
-    }
+    function fmt(x,dp=2){return isFinite(x)?(+x).toFixed(dp):'–'}
 
     function recalc(){
-      const units = $('units').value;
-      const d = parseFloat($('d').value);
-      const D = parseFloat($('D').value);
-      const hitch = $('hitch').value;
-      const stype = $('stype').value;
-      const wll = parseFloat($('wll').value);
-      const eyeL = parseFloat($('eyeL').value);
-      const vizMode = $('vizMode') ? $('vizMode').value : 'single';
+      const d = parseFloat(document.getElementById('d').value);
+      const D = parseFloat(document.getElementById('D').value);
+      const caseType = document.getElementById('case').value;
+      const gamma = parseFloat(document.getElementById('gamma').value);
+      const gammaMin = parseFloat(document.getElementById('gammaMin').value);
 
-      if(!(d>0 && D>0)) return;
+      if(!(d>0 && D>0 && gamma>0)) return;
 
       const r = D/d;
-      $('dd').textContent = fmt(r, 2) + ' : 1';
+      const kbe = 1 - 0.5/Math.sqrt(r);
+      const kspin = 1.0;
+      const gammaRed = gamma * kbe * kspin;
 
-      const badge = $('ddBadge');
-      badge.classList.remove('good','warn','bad');
-      badge.classList.add(ratioToClass(r));
-      badge.textContent = r>=25? 'Excellent' : r>=5? 'OK with reduction' : r>=2? 'High strain' : 'Not OK';
+      document.getElementById('dd').textContent = fmt(r,2)+':1';
+      document.getElementById('kbe').textContent = fmt(kbe,3);
+      document.getElementById('kspin').textContent = kspin.toFixed(2);
+      document.getElementById('gammaRed').textContent = fmt(gammaRed,2);
 
-      const cfObj = capacityFactor(hitch, stype, r);
-      $('cf').textContent = '× ' + fmt(cfObj.factor, 2);
-      $('cfNote').textContent = cfObj.note;
-
-      if (isFinite(wll)) $('adj').textContent = fmt(wll*cfObj.factor, 3) + ' t';
-      else $('adj').textContent = '—';
-
-      // Eye rule
-      const eyeMin = 2*D;
-      $('eyeMin').textContent = `≥ ${fmt(eyeMin,2)} ${units}`;
-      if (isFinite(eyeL)){
-        const ok = eyeL >= eyeMin;
-        $('eyeRule').innerHTML = ok ? `<span class="badge good">OK</span> eye length ${fmt(eyeL,2)} ≥ 2×D (${fmt(eyeMin,2)} ${units})` : `<span class="badge bad">Increase</span> eye length ${fmt(eyeL,2)} < 2×D (${fmt(eyeMin,2)} ${units})`;
+      const statusEl = document.getElementById('status');
+      if(gammaRed >= gammaMin){
+        statusEl.innerHTML = `<span class="badge good">OK</span> Reduced safety factor ${fmt(gammaRed,2)} ≥ γmin ${fmt(gammaMin,2)}`;
       } else {
-        $('eyeRule').textContent = `Provide eye length to check (rule: eye length ≥ 2×D).`;
+        statusEl.innerHTML = `<span class="badge bad">NOT OK</span> Reduced safety factor ${fmt(gammaRed,2)} < γmin ${fmt(gammaMin,2)}`;
       }
 
-      // Warnings list
-      const warns = [];
-      if (hitch !== 'eye' && r < 25) warns.push('Basket: reduction applied – consider larger D or wide‑body shackle.');
-      if (hitch !== 'eye' && r < 5) warns.push('D/d < 5 – high local bending; consider TRI‑FLEX®/GATOR‑FLEX® or lifting beam.');
-      if (hitch === 'eye' && r < 1) warns.push('Shackle body smaller than sling: upsize to ≥ d.');
-      $('warnings').innerHTML = warns.map(w=>`<li>${w}</li>`).join('');
-
-      const render = $('render') ? $('render').value : 'svg';
-      const showDims = $('showDims') ? $('showDims').checked : true;
-
-      // Toggle which element is visible
-      const canvasEl = $('viz');
-      const svgEl = $('vizSVG');
-      if (vizMode === 'sheet' || render === 'canvas'){
-        canvasEl.classList.remove('hidden');
-        svgEl.classList.add('hidden');
-        if (vizMode !== 'sheet') drawViz({units,d,D,hitch,r,vizMode});
-        else drawSheet({units,d,D});
-      } else {
-        canvasEl.classList.add('hidden');
-        svgEl.classList.remove('hidden');
-        drawSVG({units,d,D,hitch,r,showDims});
-      }
+      drawCase(caseType,{D,d,ratio:r});
     }
 
-    function drawViz({units,d,D,hitch,r,vizMode}){
-      const c = $('viz');
-      const g = c.getContext('2d');
-      if (vizMode === 'sheet') { drawSheet({units,d,D}); return; }
-      g.clearRect(0,0,c.width,c.height);
+    function line(g, x1,y1,x2,y2, w, col){ g.strokeStyle=col; g.lineWidth=w; g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
+    function arc(g, cx,cy,r, a0,a1, w, col){ g.strokeStyle=col; g.lineWidth=w; g.beginPath(); g.arc(cx,cy,r,a0,a1); g.stroke(); }
 
-      // scale so object fits nicely
-      const pad = 30;
-      const W = c.width, H = c.height;
-      const maxObj = Math.min(W*0.35, H*0.6);
-      const scale = maxObj / D; // px per unit (same units for D and d)
+    function drawCase(kind,{D,d,ratio}){
+      const c=document.getElementById('viz');
+      const g=c.getContext('2d');
+      const W=c.width,H=c.height; g.clearRect(0,0,W,H);
 
-      // Colors
-      const col = {
-        rope: '#cbd5e1',
-        obj:  '#64748b',
-        text: '#e5e7eb',
-        ref:  '#94a3b8',
-      };
+      const col={bg:'#0b152e',obj:'#9aa5b4',rope:'#e5e7eb',metal:'#cbd5e1',dim:'#8aa3c2',text:'#e5e7eb'};
+      g.fillStyle=col.bg; g.fillRect(0,0,W,H);
 
-      // Draw object (circle) and rope basket or straight
-      const cx = W*0.28, cy = H*0.55; // object center
-      const R = (D*scale)/2;
+      const maxObj=Math.min(W*0.26,H*0.45);
+      const scale=maxObj/D;
+      const R=Math.max(6,(D*scale)/2);
+      const ropeW=Math.max(2,d*scale);
 
-      // object
-      g.fillStyle = col.obj;
-      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI*2); g.fill();
+      const cx=W*0.3,cy=H*0.6;
+      const yTop=H*0.14,yBot=H*0.92;
+      const left=cx-R-40,right=cx+R+40;
 
-      // labels D
-      g.strokeStyle = col.ref; g.lineWidth = 1.25; g.setLineDash([6,6]);
-      g.beginPath(); g.moveTo(cx-R, cy); g.lineTo(cx+R, cy); g.stroke();
-      g.setLineDash([]);
-      g.fillStyle = col.text; g.font = '12px sans-serif';
-      g.fillText(`D = ${fmt(D,2)} ${units}`, cx-R, cy-8);
+      g.strokeStyle=col.rope; g.lineCap='round'; g.lineJoin='round';
 
-      // Rope thickness visual from d
-      const ropeW = Math.max(2, d*scale);
-
-      g.lineWidth = ropeW; g.strokeStyle = col.rope; g.lineCap = 'round';
-      if (hitch === 'eye'){
-        // straight eye to shackle: draw a straight rope over a pin (object shown as circle to represent shackle body)
-        const x = cx+R+60, yTop = H*0.18, yBot = H*0.92;
-        g.beginPath(); g.moveTo(x, yTop); g.lineTo(x, yBot); g.stroke();
-        g.fillStyle = col.text; g.fillText(`d = ${fmt(d,2)} ${units}`, x+10, yTop+12);
-      } else {
-        // basket around object
-        const yTop = H*0.18, yBot = H*0.92, left = cx-R-40, right = cx+R+40;
-        g.beginPath(); g.moveTo(left, yBot); g.lineTo(left, yTop); g.stroke();
-        g.beginPath(); g.moveTo(right, yBot); g.lineTo(right, yTop); g.stroke();
-        // little connector at top to suggest shackle
-        g.lineWidth = 6; g.beginPath(); g.moveTo(left, yTop); g.lineTo(right, yTop); g.stroke();
-        // label d
-        g.fillStyle = col.text; g.font = '12px sans-serif';
-        g.fillText(`d = ${fmt(d,2)} ${units}`, right+10, yTop+12);
+      if(kind==='grommetPin'){
+        g.fillStyle=col.metal; g.beginPath(); g.arc(cx,cy,R,0,Math.PI*2); g.fill();
+        line(g,left,yTop,left,cy-R-6,ropeW,col.rope);
+        line(g,right,yTop,right,cy-R-6,ropeW,col.rope);
+        arc(g,cx,cy+R+6,R+12,Math.PI,0,ropeW,col.rope);
+      }
+      else if(kind==='eyeShackle'){
+        g.fillStyle=col.metal; g.beginPath(); g.arc(cx,cy,R*0.6,0,Math.PI*2); g.fill();
+        line(g,cx,yTop,cx,cy-R*0.6-10,ropeW,col.rope);
+        arc(g,cx,yTop+18,18,Math.PI,0,3,col.metal);
+      }
+      else if(kind==='basketObject'){
+        g.fillStyle=col.metal; g.beginPath(); g.arc(cx,cy,R,0,Math.PI*2); g.fill();
+        line(g,left,yBot,left,yTop,ropeW,col.rope);
+        line(g,right,yBot,right,yTop,ropeW,col.rope);
+        line(g,left,yTop,right,yTop,Math.max(4,ropeW*0.6),col.rope);
+      }
+      else if(kind==='basketPin'){
+        g.fillStyle=col.metal; g.beginPath(); g.arc(cx,cy,R*0.6,0,Math.PI*2); g.fill();
+        line(g,left,yBot,left,yTop,ropeW,col.rope);
+        line(g,right,yBot,right,yTop,ropeW,col.rope);
+        line(g,left,yTop,right,yTop,Math.max(4,ropeW*0.6),col.rope);
+      }
+      else if(kind==='doubleInShackle'){
+        g.fillStyle=col.metal; g.beginPath(); g.arc(cx,cy,R*0.7,0,Math.PI*2); g.fill();
+        line(g,right-20,yBot,right-20,yTop,ropeW,col.rope);
+        line(g,right-40,yBot,right-40,yTop,ropeW,col.rope);
+        line(g,left+20,yBot,left+20,yTop,ropeW,col.rope);
+        line(g,left+40,yBot,left+40,yTop,ropeW,col.rope);
+        line(g,left+20,yTop,right-20,yTop,Math.max(4,ropeW*0.6),col.rope);
       }
 
-      // D/d label
-      g.fillStyle = col.text; g.font = '16px sans-serif';
-      g.fillText(`D/d = ${fmt(r,2)} : 1`, W*0.65, H*0.25);
-
-      // Rule zone bars
-      const zones = [
-        {min:0, max:2,   label:'<2 Not OK', color:'#ef4444'},
-        {min:2, max:5,   label:'2–5 ~40% red.', color:'#f97316'},
-        {min:5, max:25,  label:'5–25 ~25% red.', color:'#eab308'},
-        {min:25, max:40, label:'≥25 No reduction', color:'#10b981'}
-      ];
-      const barX = W*0.55, barY = H*0.35, barW = W*0.35, barH = 18;
-      // draw axis
-      g.fillStyle = '#1f2937'; g.fillRect(barX-6, barY-6, barW+12, barH+12);
-      const span = 40; // show up to 40:1
-      let x0 = barX;
-      zones.forEach(z=>{
-        const w = (Math.min(z.max, span) - Math.max(z.min,0))/span * barW;
-        g.fillStyle = z.color; g.fillRect(x0, barY, w, barH);
-        g.fillStyle = '#000'; g.font = '10px sans-serif'; g.fillText(z.label, x0+4, barY+12);
-        x0 += w;
-      });
-      // marker
-      const mx = barX + Math.max(0, Math.min(r, span))/span * barW;
-      g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(mx, barY-6); g.lineTo(mx, barY+barH+6); g.stroke();
-    }
-
-    // Gallery drawing that mirrors the five cases of the sheet
-    function drawSheet({units,d,D}){
-      const c = $('viz');
-      const g = c.getContext('2d');
-      g.clearRect(0,0,c.width,c.height);
-
-      const W = c.width, H = c.height;
-      const cols = 5, gutter = 10, pad = 14;
-      const panelW = (W - (cols+1)*gutter)/cols;
-      const panelH = H - 2*gutter;
-
-      const ropeCol = '#cbd5e1', objCol = '#64748b', refCol = '#94a3b8', txt = '#e5e7eb';
-
-      const frame = (i, title) => {
-        const x = gutter + i*(panelW+gutter), y = gutter;
-        g.fillStyle = '#0b152e'; g.fillRect(x,y,panelW,panelH);
-        g.strokeStyle = '#23314f'; g.lineWidth = 1; g.strokeRect(x+.5,y+.5,panelW-1,panelH-1);
-        g.fillStyle = txt; g.font = '11px sans-serif'; g.fillText(title, x+8, y+14);
-        return {x,y,w:panelW,h:panelH, cx:x+panelW/2, cy:y+panelH*0.60};
-      };
-
-      // A) Eye length ≥ 2×D (uses user D)
-      (function(){
-        const p = frame(0, 'Eye length ≥ 2×D');
-        const Rmax = Math.min(p.w*0.22, p.h*0.18);
-        const scale = (2*Rmax)/Math.max(D, d*5);
-        const Dpx = D*scale, dpx = Math.max(2, d*scale);
-        const hookX = p.cx, hookY = p.y+42;
-        g.fillStyle = objCol; g.beginPath(); g.arc(hookX, hookY, Dpx/2, 0, Math.PI*2); g.fill();
-        // eye loop
-        const ex = p.cx, top = hookY + Dpx/2 + 10, eyeTop = top, eyeBot = p.y + p.h - 12;
-        g.strokeStyle = ropeCol; g.lineWidth = dpx; g.lineCap = 'round';
-        g.beginPath(); g.moveTo(ex-22, eyeBot); g.lineTo(ex-22, eyeTop); g.arc(ex, eyeTop, 22, Math.PI, 0); g.lineTo(ex+22, eyeBot); g.stroke();
-        // dimension for 2D and D
-        g.strokeStyle = refCol; g.setLineDash([5,4]); g.lineWidth=1;
-        g.beginPath(); g.moveTo(ex+40, eyeTop); g.lineTo(ex+40, eyeBot); g.stroke();
-        g.beginPath(); g.moveTo(ex+58, hookY - Dpx/2); g.lineTo(ex+58, hookY + Dpx/2); g.stroke();
-        g.setLineDash([]);
-        g.fillStyle = txt; g.font='10px sans-serif'; g.fillText(`≥ 2×D`, ex+44, (eyeTop+eyeBot)/2);
-      })();
-
-      // B) Eye→shackle: D ≥ d (1:1 OK)
-      (function(){
-        const p = frame(1, 'Eye→shackle: D ≥ d');
-        const scale = (p.h*0.5)/Math.max(d*6, D);
-        const dpx = Math.max(2, d*scale), Dpx = Math.max(d*scale, dpx);
-        const x = p.cx; const yTop = p.y+30, yBot = p.y + p.h - 18;
-        // pin
-        g.fillStyle = objCol; g.beginPath(); g.arc(x, (yTop+yBot)/2, Dpx/2, 0, Math.PI*2); g.fill();
-        // rope
-        g.strokeStyle = ropeCol; g.lineWidth = dpx; g.beginPath(); g.moveTo(x, yTop); g.lineTo(x, yBot); g.stroke();
-        g.fillStyle = txt; g.font='10px sans-serif'; g.fillText('No reduction', x-30, yTop+12);
-      })();
-
-      // Helper: basket around circular object with contact diameter Dcase
-      const basket = (p, Dcase, label) => {
-        const Rmax = Math.min(p.w*0.22, p.h*0.22);
-        const scale = (2*Rmax)/Dcase; const Dpx = Dcase*scale; const dpx = Math.max(2, d*scale);
-        const cx = p.cx, cy = p.y + p.h*0.62;
-        // object
-        g.fillStyle = objCol; g.beginPath(); g.arc(cx, cy, Dpx/2, 0, Math.PI*2); g.fill();
-        // rope legs
-        const yTop = p.y+34, yBot = p.y+p.h-12, left = cx - Dpx/2 - 18, right = cx + Dpx/2 + 18;
-        g.strokeStyle = ropeCol; g.lineWidth = dpx; g.lineCap = 'round';
-        g.beginPath(); g.moveTo(left, yBot); g.lineTo(left, yTop); g.stroke();
-        g.beginPath(); g.moveTo(right, yBot); g.lineTo(right, yTop); g.stroke();
-        g.lineWidth = Math.max(4, dpx*0.6); g.beginPath(); g.moveTo(left, yTop); g.lineTo(right, yTop); g.stroke();
-        g.fillStyle = txt; g.font='10px sans-serif'; g.fillText(label, p.x+8, p.y+28);
-      };
-
-      // C) Basket over object: D/d ≈ 25 (no reduction)
-      (function(){
-        const p = frame(2, 'Basket on object');
-        basket(p, 25*d, 'D/d ≈ 25 → no reduction');
-      })();
-
-      // D) Basket over small pin: D/d ≈ 2 (−40%)
-      (function(){
-        const p = frame(3, 'Basket over pin');
-        basket(p, 2*d, 'D/d ≈ 2 → reduce ~40%');
-      })();
-
-      // E) Wide‑body shackle: D/d ≈ 5 (−25%)
-      (function(){
-        const p = frame(4, 'Wide‑body shackle');
-        const Dcase = 5*d;
-        const Rmax = Math.min(p.w*0.22, p.h*0.22);
-        const scale = (2*Rmax)/Dcase; const Dpx = Dcase*scale; const dpx = Math.max(2, d*scale);
-        const cx = p.cx, cy = p.y + p.h*0.6;
-        // crown
-        g.strokeStyle = objCol; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, Dpx/2, Math.PI*0.15, Math.PI*0.85); g.stroke();
-        // pin
-        g.fillStyle = objCol; g.fillRect(cx - Dpx*0.35, cy + Dpx*0.38, Dpx*0.7, 6);
-        // legs and top connection
-        const yTop = p.y+36, yBot = p.y+p.h-12, left = cx - Dpx/2 - 20, right = cx + Dpx/2 + 20;
-        g.strokeStyle = ropeCol; g.lineWidth = dpx;
-        g.beginPath(); g.moveTo(left, yBot); g.lineTo(left, yTop); g.stroke();
-        g.beginPath(); g.moveTo(right, yBot); g.lineTo(right, yTop); g.stroke();
-        g.lineWidth = Math.max(4, dpx*0.6); g.beginPath(); g.moveTo(left, yTop); g.lineTo(right, yTop); g.stroke();
-        g.fillStyle = txt; g.font='10px sans-serif'; g.fillText('D/d ≈ 5 → reduce ~25%', p.x+8, p.y+28);
-      })();
-    }
-
-    // ===== SVG renderer (CAD‑like linework) =====
-    function drawSVG({units,d,D,hitch,r,showDims}){
-      const svg = document.getElementById('vizSVG');
-      const W = 640, H = 360; // viewBox
-
-      // helpers
-      const ns = 'http://www.w3.org/2000/svg';
-      const S = (name, attrs={})=>{ const el = document.createElementNS(ns, name); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
-      const clear = node => { while(node.firstChild) node.removeChild(node.firstChild); };
-      clear(svg);
-
-      // defs: arrow markers + subtle rope gradient
-      const defs = S('defs');
-      const mA = S('marker', {id:'arrow', viewBox:'0 0 10 10', refX:'10', refY:'5', markerWidth:'6', markerHeight:'6', orient:'auto-start-reverse'});
-      mA.appendChild(S('path',{d:'M 0 0 L 10 5 L 0 10 z', fill:'#8aa3c2'}));
-      defs.appendChild(mA);
-      svg.appendChild(defs);
-
-      // scene background grid (light)
-      const grid = S('path',{d:`M0 0 H${W} V${H} H0 Z`, fill:'none', stroke:'#1f2a44', 'stroke-width':'1'});
-      svg.appendChild(grid);
-
-      // scale similar to canvas version
-      const cx = W*0.28, cy = H*0.58;
-      const maxObj = Math.min(W*0.35, H*0.6);
-      const scale = maxObj / D;
-      const R = (D*scale)/2;
-
-      // object (cylinder or pin)
-      const obj = S('circle',{cx, cy, r:R, class:'metal'});
-      svg.appendChild(obj);
-
-      const ropeW = Math.max(2, d*scale);
-      const rope = (dStr, extra={})=>{ const p=S('path',{d:dStr, class:'rope', stroke:'#cbd5e1','stroke-width':ropeW, fill:'none'}); for(const k in extra)p.setAttribute(k,extra[k]); svg.appendChild(p); };
-
-      // draw per hitch
-      if (hitch === 'eye'){
-        const x = cx+R+60, yTop = H*0.18, yBot = H*0.92;
-        rope(`M ${x} ${yTop} L ${x} ${yBot}`);
-        // label
-        svg.appendChild(S('text',{x:x+10, y:yTop+14, class:'label'}, document.createTextNode(`d = ${d.toFixed(2)} ${units}`)));
-      } else if (hitch === 'basket' || hitch === 'basketShackle'){
-        const yTop = H*0.18, yBot = H*0.92, left = cx-R-40, right = cx+R+40;
-        rope(`M ${left} ${yBot} L ${left} ${yTop}`);
-        rope(`M ${right} ${yBot} L ${right} ${yTop}`);
-        svg.appendChild(S('path',{d:`M ${left} ${yTop} L ${right} ${yTop}`, stroke:'#cbd5e1','stroke-width':Math.max(4, ropeW*0.6),'stroke-linecap':'round', fill:'none'}));
-        svg.appendChild(S('text',{x:right+10, y:yTop+12, class:'label'}, document.createTextNode(`d = ${d.toFixed(2)} ${units}`)));
-
-        if (hitch === 'basketShackle'){
-          // stylised wide-body shackle crown drawn over the object
-          const crownR = R*1.05;
-          svg.appendChild(S('path',{d:`M ${cx-crownR} ${cy} A ${crownR} ${crownR} 0 0 1 ${cx+crownR} ${cy}`, stroke:'#7b8aa5','stroke-width':'6', fill:'none'}));
-          svg.appendChild(S('rect',{x:cx-crownR*0.7, y:cy+crownR*0.6, width:crownR*1.4, height:6, fill:'#7b8aa5'}));
-        }
-      }
-
-      // D dimension
-      if (showDims){
-        const dimY = cy- R - 12;
-        const dline = S('line',{x1:cx-R, y1:dimY, x2:cx+R, y2:dimY, class:'dim', 'marker-start':'url(#arrow)','marker-end':'url(#arrow)'});
-        svg.appendChild(dline);
-        svg.appendChild(S('text',{x:cx, y:dimY-4, 'text-anchor':'middle', class:'note'}, document.createTextNode(`D = ${D.toFixed(2)} ${units}`)));
-      }
-
-      // D/d band and marker on right
-      const bandX = W*0.55, bandY = H*0.18, bandW = W*0.36, bandH = 18;
-      const zone = (x,w,fill,label)=>{ svg.appendChild(S('rect',{x, y:bandY, width:w, height:bandH, fill})); svg.appendChild(S('text',{x:x+4,y:bandY+12,class:'note'},document.createTextNode(label))); };
-      svg.appendChild(S('rect',{x:bandX-6,y:bandY-6,width:bandW+12,height:bandH+12, fill:'#1f2937'}));
-      const span = 40, zones=[[0,2,'#ef4444','<2 Not OK'],[2,5,'#f97316','2–5 ~40%'],[5,25,'#eab308','5–25 ~25%'],[25,40,'#10b981','≥25 OK']];
-      let x0 = bandX;
-      zones.forEach(([a,b,c,t])=>{ const w=(Math.min(b,span)-Math.max(a,0))/span*bandW; zone(x0,w,c,t); x0+=w; });
-      const mx = bandX + Math.max(0, Math.min(r, span))/span * bandW;
-      svg.appendChild(S('line',{x1:mx,y1:bandY-6,x2:mx,y2:bandY+bandH+6, stroke:'#fff','stroke-width':'2'}));
-
-      // D/d label block
-      const label = S('text',{x:W*0.65, y:H*0.14, class:'label'}, document.createTextNode(`D/d = ${r.toFixed(2)} : 1`));
-      svg.appendChild(label);
+      // D/d scale band
+      const bandX=W*0.62,bandY=H*0.18,bandW=W*0.30,bandH=16,span=40;
+      const zones=[{a:0,b:2,c:'#ef4444',t:'<2'},{a:2,b:5,c:'#f97316',t:'2–5'},{a:5,b:25,c:'#eab308',t:'5–25'},{a:25,b:40,c:'#10b981',t:'≥25'}];
+      g.fillStyle='#1f2937'; g.fillRect(bandX-6,bandY-6,bandW+12,bandH+12);
+      let x=bandX; zones.forEach(z=>{const w=(Math.min(z.b,span)-Math.max(z.a,0))/span*bandW; g.fillStyle=z.c; g.fillRect(x,bandY,w,bandH); g.fillStyle='#000'; g.font='10px sans-serif'; g.fillText(z.t,x+3,bandY+12); x+=w;});
+      const mx=bandX+Math.max(0,Math.min(ratio,span))/span*bandW;
+      g.strokeStyle='#fff'; g.lineWidth=2; g.beginPath(); g.moveTo(mx,bandY-6); g.lineTo(mx,bandY+bandH+6); g.stroke();
+      g.fillStyle=col.text; g.font='14px sans-serif'; g.fillText(`D/d = ${fmt(ratio,2)} : 1`,bandX,bandY-10);
     }
 
     recalc();
+    ['d','D','gamma','gammaMin','case'].forEach(id=>document.getElementById(id).addEventListener('input',recalc));
   </script>
 </body>
-
-<!-- README.md suggestion -->
-<!--
-# D/d Check – Sling & Shackle Visualiser
-
-This tool helps rigging engineers and lifting planners evaluate sling-to-object **D/d ratios** and apply industry reduction factors.
-
-## Features
-- Calculates D/d ratio and basket capacity factor.
-- Checks eye length ≥ 2×D.
-- Visualises hitch types as CAD-like SVG linework or canvas sketches.
-- Sheet mode shows the 5 common cases (eye length, eye→shackle, basket ≥25:1, basket at 2:1, wide-body shackle at 5:1).
-- Optional WLL input to calculate adjusted capacity.
-
-## Standards & Guidance
-This tool’s rules align with common UK/EU standards and industry references:
-
-- **BS EN 13414‑1:2003 + A2:2008** (Wire rope slings – safety). Basket hitch WLLs assume D/d ≥ 25:1; eye length ≥ 2×D.
-- **BS EN 12385‑4** (Steel wire ropes – safety factors, breaking forces).
-- **BS 1290:1983** (Wire rope slings for general lifting purposes).
-- **Unirope Rigging Guidelines**: Confirms 25:1 baseline, 5:1 minimum for TRI‑FLEX® / GATOR‑FLEX®.
-- **KW Ropes Technical Table**: Confirms D/d ≥ 25:1 for full capacity.
-- **Certex UK Guidance**: D/d should never be < 1:1, significant reduction at tight bends.
-
-## Disclaimer
-This is an engineering **aid** only. Always verify against the lift plan, applicable standards (ASME B30.9, BS/EN), and manufacturer data.
-
--->
 </html>
